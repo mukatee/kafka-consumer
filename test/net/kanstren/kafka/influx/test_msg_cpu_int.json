@@ -1,0 +1,13 @@
+{
+  "header": {
+    "db": "session1",
+    "type": "cpu load",
+    "tom": "server01",
+    "target": "127.0.0.1:155",
+    "oid": "1.1.1.2.1",
+    "time": 0
+  },
+  "body": {
+    "value": "3"
+  }
+}

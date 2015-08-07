@@ -1,0 +1,14 @@
+<project name="kafka-influx" default="ssh-upload" basedir=".">
+  <target name="ssh-upload">
+    <!--scp trust="yes" file="*.tar.gz" todir="${ssh.user}:${ssh.password}@${ssh.host}:${ssh.dir}"/-->
+    <scp trust="yes" todir="${ssh.user}:${ssh.password}@${ssh.host}:${ssh.dir}">
+      <fileset dir="target">
+        <include name="kafka-influx-consumer-*.tar.gz"/>
+      </fileset>
+    </scp>
+    <sshexec trust="yes" host="${ssh.host}"
+             username="${ssh.user}"
+             password="${ssh.password}"
+             command="cd ${ssh.dir};tar xvf kafka-influx-consumer-*.tar.gz;cp kafka-importer.properties_ kafka-importer.properties"/>
+  </target>
+</project>

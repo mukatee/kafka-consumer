@@ -1,0 +1,1 @@
+creating a zip/tar with own new jar and all dependencies: mvn package

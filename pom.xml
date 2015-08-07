@@ -20,12 +20,6 @@
       <name>Teemu Kanstren</name>
       <email>tkanstren@gmail.com</email>
       <url>http://www.kanstren.net</url>
-      <roles>
-        <role>architect</role>
-        <role>developer</role>
-        <role>supreme commander</role>
-        <role>superhero</role>
-      </roles>
       <timezone>Europe/Helsinki</timezone>
     </developer>
   </developers>
@@ -71,10 +65,16 @@
       <artifactId>minimal-json</artifactId>
       <version>0.9.2</version>
     </dependency>
+    <dependency>
+      <groupId>net.kanstren.osmo</groupId>
+      <artifactId>osmotester</artifactId>
+      <version>3.4.0</version>
+    </dependency>
   </dependencies>
 
   <build>
     <sourceDirectory>src/</sourceDirectory>
+    <scriptSourceDirectory>scripts/</scriptSourceDirectory>
     <testSourceDirectory>test/</testSourceDirectory>
     <resources>
       <resource>
@@ -84,6 +84,14 @@
         </excludes>
       </resource>
     </resources>
+    <testResources>
+      <testResource>
+        <directory>test</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </testResource>
+    </testResources>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -92,6 +100,46 @@
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <descriptors>
+            <descriptor>src/assembly.xml</descriptor>
+          </descriptors>
+        </configuration>
+        <executions>
+          <execution>
+            <id>create-archive</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+          <!-- Configures the created archive -->
+          <archive>
+            <!-- Configures the content of the created manifest -->
+            <manifest>
+              <!-- Adds the classpath to the created manifest -->
+              <addClasspath>true</addClasspath>
+              <!--
+                  Specifies that all dependencies of our application are found
+                  from the lib directory.
+              -->
+              <classpathPrefix>lib/</classpathPrefix>
+              <!-- Configures the main class of the application -->
+              <mainClass>net.kanstren.kafka.influx.Main</mainClass>
+            </manifest>
+            <addMavenDescriptor>false</addMavenDescriptor>
+          </archive>
         </configuration>
       </plugin>
     </plugins>

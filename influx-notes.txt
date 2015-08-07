@@ -1,0 +1,7 @@
+get list of fields
+
+select * from SERIESNAME limit 1
+
+field names should be alphanumeric with maybe few special chars such as _ to avoid any issues
+
+location on ubuntu: /opt/influxdb/influx

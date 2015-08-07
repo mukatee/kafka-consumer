@@ -61,7 +61,7 @@ public class Main {
   private static ConsumerConfig createConsumerConfig() {
     Properties props = new Properties();
     props.put("zookeeper.connect", Config.zooUrl);
-    props.put("group.id", Config.zooGroup);
+    props.put("group.id", Config.kafkaGroup);
     props.put("zookeeper.session.timeout.ms", "1000");
     props.put("zookeeper.sync.time.ms", "200");
     props.put("auto.commit.interval.ms", "1000");
@@ -71,13 +71,14 @@ public class Main {
 
   private static void init() throws Exception {
     File configFile = new File(CONFIG_FILE);
-    if (!configFile.exists()) throw new FileNotFoundException("Could not load configuration file "+CONFIG_FILE+" from current directory.");
+    if (!configFile.exists())
+      throw new FileNotFoundException("Could not load configuration file " + CONFIG_FILE + " from current directory.");
     Properties props = new Properties();
     props.load(new FileInputStream(configFile));
     Config.kafkaTopic = props.getProperty(Config.KEY_KAFKA_TOPIC);
     Config.zooUrl = props.getProperty(Config.KEY_ZOOKEEPER_URL);
-    Config.zooGroup = props.getProperty(Config.KEY_ZOOKEEPER_GROUP);
-    Config.zooCluster = props.getProperty(Config.KEY_ZOOKEEPER_CLUSTER);
+    Config.kafkaGroup = props.getProperty(Config.KEY_KAFKA_GROUP);
+    Config.kafkaCluster = props.getProperty(Config.KEY_KAFKA_CLUSTER);
     Config.influxDbName = props.getProperty(Config.KEY_INFLUX_DB_NAME);
     Config.influxDbUrl = props.getProperty(Config.KEY_INFLUX_DB_URL);
     Config.influxUser = props.getProperty(Config.KEY_INFLUX_USERNAME);
@@ -89,16 +90,25 @@ public class Main {
 
   private static void checkConfig() {
     String errors = "";
-    if (Config.kafkaTopic == null) errors += "Missing property '"+Config.KEY_KAFKA_TOPIC+"' in configuration file "+CONFIG_FILE+"\n";
-    if (Config.zooUrl == null) errors += "Missing property '"+Config.KEY_ZOOKEEPER_URL+"' in configuration file "+CONFIG_FILE+"\n";
-    if (Config.zooGroup == null) errors += "Missing property '"+Config.KEY_ZOOKEEPER_GROUP+"' in configuration file "+CONFIG_FILE+"\n";
-    if (Config.zooCluster == null) errors += "Missing property '"+Config.KEY_ZOOKEEPER_CLUSTER+"' in configuration file "+CONFIG_FILE+"\n";
-    if (Config.influxDbName == null) errors += "Missing property '"+Config.KEY_INFLUX_DB_NAME+"' in configuration file "+CONFIG_FILE+"\n";
-    if (Config.influxDbUrl == null) errors += "Missing property '"+Config.KEY_INFLUX_DB_URL+"' in configuration file "+CONFIG_FILE+"\n";
-    if (Config.influxUser == null) errors += "Missing property '"+Config.KEY_INFLUX_USERNAME+"' in configuration file "+CONFIG_FILE+"\n";
-    if (Config.influxPass == null) errors += "Missing property '"+Config.KEY_INFLUX_PASSWORD+"' in configuration file "+CONFIG_FILE+"\n";
-    if (Config.threads == null) errors += "Missing property '"+Config.KEY_THREAD_COUNT+"' in configuration file "+CONFIG_FILE+"\n";
-    if (errors.length() > 0 ) throw new RuntimeException(errors);
+    if (Config.kafkaTopic == null)
+      errors += "Missing property '" + Config.KEY_KAFKA_TOPIC + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.zooUrl == null)
+      errors += "Missing property '" + Config.KEY_ZOOKEEPER_URL + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.kafkaGroup == null)
+      errors += "Missing property '" + Config.KEY_KAFKA_GROUP + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.kafkaCluster == null)
+      errors += "Missing property '" + Config.KEY_KAFKA_CLUSTER + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.influxDbName == null)
+      errors += "Missing property '" + Config.KEY_INFLUX_DB_NAME + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.influxDbUrl == null)
+      errors += "Missing property '" + Config.KEY_INFLUX_DB_URL + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.influxUser == null)
+      errors += "Missing property '" + Config.KEY_INFLUX_USERNAME + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.influxPass == null)
+      errors += "Missing property '" + Config.KEY_INFLUX_PASSWORD + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.threads == null)
+      errors += "Missing property '" + Config.KEY_THREAD_COUNT + "' in configuration file " + CONFIG_FILE + "\n";
+    if (errors.length() > 0) throw new RuntimeException(errors);
   }
 
   public static void main(String[] args) throws Exception {

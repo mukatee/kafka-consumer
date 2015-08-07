@@ -1,0 +1,13 @@
+{
+  "header": {
+    "db": "session1",
+    "type": "test_oid3",
+    "tom": "test target 3",
+    "target": "127.0.0.1:155",
+    "oid": "1.1.1.2.1",
+    "time": 0
+  },
+  "body": {
+    "error": "value could not be read"
+  }
+}
