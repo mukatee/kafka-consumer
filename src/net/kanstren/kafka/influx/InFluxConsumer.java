@@ -109,11 +109,6 @@ public class InFluxConsumer implements Runnable {
 
     JsonObject body = json.get("body").asObject();
 
-    Point.Builder builder = Point.measurement(type);
-    builder.time(time, TimeUnit.MILLISECONDS);
-    setTags(header, builder);
-    setFields(body, builder);
-
     BatchPoints batchPoints = BatchPoints
             .database(Config.influxDbName)
             .tag("async", "true")
@@ -121,10 +116,35 @@ public class InFluxConsumer implements Runnable {
             .consistency(InfluxDB.ConsistencyLevel.ALL)
             .build();
 
+    if (type.equals("multipoint")) {
+      multiPoint(batchPoints, time, header, body);
+    } else {
+      singlePoint(batchPoints, type, time, header, body);
+    }
+
+    db.write(batchPoints);
+  }
+
+  private void multiPoint(BatchPoints batch, long time, JsonObject header, JsonObject body) {
+    for (JsonObject.Member member : body) {
+      String name = member.getName();
+      Point.Builder builder = Point.measurement(name);
+      builder.time(time, TimeUnit.MILLISECONDS);
+      setTags(header, builder);
+      setField("value", builder, member.getValue());
+      Point point = builder.build();
+      batch.point(point);
+    }
+  }
+
+  private void singlePoint(BatchPoints batch, String type, long time, JsonObject header, JsonObject body) {
+    Point.Builder builder = Point.measurement(type);
+    builder.time(time, TimeUnit.MILLISECONDS);
+    setTags(header, builder);
+    createFields(body, builder);
     Point point = builder.build();
     System.out.println("writing point:" + point);
-    batchPoints.point(point);
-    db.write(batchPoints);
+    batch.point(point);
   }
 
   private void setTags(JsonObject header, Point.Builder builder) {
@@ -135,7 +155,7 @@ public class InFluxConsumer implements Runnable {
     }
   }
 
-  private void setFields(JsonObject body, Point.Builder builder) {
+  private void createFields(JsonObject body, Point.Builder builder) {
     for (JsonObject.Member member : body) {
       setField(member.getName(), builder, member.getValue());
     }
