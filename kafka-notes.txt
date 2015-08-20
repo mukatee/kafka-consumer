@@ -1,0 +1,12 @@
+read topic and print on console:
+  bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic test --from-beginning
+
+query topic retention time:
+  bin/kafka-topics.sh --zookeeper zk.yoursite.com --desctiber --topic as-access
+
+set topic retention time:
+  bin/kafka-topics.sh --zookeeper zk.yoursite.com --alter --topic as-access --config retention.ms=86400000
+
+avro "string" deserialization: becomes avro.utf8 object, need to call toString() (cached)
+
+avro optional fields are represented as unions..

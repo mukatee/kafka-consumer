@@ -1,13 +1,17 @@
-package net.kanstren.kafka.influx;
+package osmo.monitoring.kafka.influx.json;
 
 import com.eclipsesource.json.JsonObject;
 import com.eclipsesource.json.JsonValue;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
+import osmo.monitoring.kafka.influx.Config;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
+import osmo.monitoring.kafka.influx.Config;
 
 import java.util.concurrent.TimeUnit;
 
@@ -51,7 +55,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Teemu Kanstren.
  */
-public class InFluxConsumer implements Runnable {
+public class InFluxJSONConsumer implements Runnable {
   /** The Kafka measurement data stream. */
   private final KafkaStream stream;
   /** Identifier for the thread this consumer is running on. */
@@ -60,9 +64,9 @@ public class InFluxConsumer implements Runnable {
   private final InfluxDB db;
   /** To create unique thread id values. */
   private static int nextId = 1;
-  private final Log log = new Log(InFluxConsumer.class);
+  private static final Logger log = LogManager.getLogger();
 
-  public InFluxConsumer(KafkaStream stream) {
+  public InFluxJSONConsumer(KafkaStream stream) {
     this.stream = stream;
     this.id = nextId++;
     db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);

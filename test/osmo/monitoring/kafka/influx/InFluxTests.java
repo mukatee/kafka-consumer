@@ -1,5 +1,6 @@
-package net.kanstren.kafka.influx;
+package osmo.monitoring.kafka.influx;
 
+import osmo.monitoring.kafka.influx.json.InFluxJSONConsumer;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Query;
@@ -8,6 +9,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import osmo.common.TestUtils;
+import osmo.monitoring.kafka.influx.json.InFluxJSONConsumer;
 
 import java.util.List;
 import java.util.Map;
@@ -18,7 +20,7 @@ import static org.testng.Assert.assertEquals;
  * @author Teemu Kanstren.
  */
 public class InFluxTests {
-  private InFluxConsumer influx = null;
+  private InFluxJSONConsumer influx = null;
   private InfluxDB db = null;
 
   @BeforeMethod
@@ -29,7 +31,7 @@ public class InFluxTests {
     Config.influxDbUrl = "http://192.168.2.153:8086";
     db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
     db.deleteDatabase(Config.influxDbName);
-    influx = new InFluxConsumer(null);
+    influx = new InFluxJSONConsumer(null);
   }
 
   @AfterMethod

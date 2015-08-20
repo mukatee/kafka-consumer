@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                       http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>net.kanstren.kafkainflux</groupId>
+  <groupId>osmo.monitoring</groupId>
   <artifactId>kafka-influx-consumer</artifactId>
   <packaging>jar</packaging>
   <version>0.0.1</version>
@@ -70,6 +70,21 @@
       <artifactId>osmotester</artifactId>
       <version>3.4.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <version>2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>1.7.7</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -93,6 +108,23 @@
       </testResource>
     </testResources>
     <plugins>
+      <plugin>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-maven-plugin</artifactId>
+        <version>1.7.7</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>schema</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${project.basedir}/src/net/kanstren/kafka/influx/avro/</sourceDirectory>
+              <outputDirectory>${project.basedir}/src/</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -136,7 +168,7 @@
               -->
               <classpathPrefix>lib/</classpathPrefix>
               <!-- Configures the main class of the application -->
-              <mainClass>net.kanstren.kafka.influx.Main</mainClass>
+              <mainClass>osmo.monitoring.kafka.influx.Main</mainClass>
             </manifest>
             <addMavenDescriptor>false</addMavenDescriptor>
           </archive>

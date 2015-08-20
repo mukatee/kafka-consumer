@@ -1,8 +1,13 @@
-package net.kanstren.kafka.influx;
+package osmo.monitoring.kafka.influx;
 
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.ConsumerConnector;
+import osmo.monitoring.kafka.influx.avro.InFluxAvroConsumer;
+import osmo.monitoring.kafka.influx.avro.SchemaRepository;
+import osmo.monitoring.kafka.influx.json.InFluxJSONConsumer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -22,6 +27,8 @@ public class Main {
   private final ConsumerConnector consumer;
   private ExecutorService executor;
   public static final String CONFIG_FILE = "kafka-importer.properties";
+  private static final Logger log = LogManager.getLogger();
+  private static boolean avro = true;
 
   public Main() {
     consumer = kafka.consumer.Consumer.createJavaConsumerConnector(createConsumerConfig());
@@ -32,10 +39,10 @@ public class Main {
     if (executor != null) executor.shutdown();
     try {
       if (!executor.awaitTermination(5000, TimeUnit.MILLISECONDS)) {
-        System.out.println("Timed out waiting for consumer threads to shut down, exiting uncleanly");
+        log.error("Timed out waiting for consumer threads to shut down, exiting uncleanly");
       }
     } catch (InterruptedException e) {
-      System.out.println("Interrupted during shutdown, exiting uncleanly");
+      log.error("Interrupted during shutdown, exiting uncleanly");
     }
   }
 
@@ -48,13 +55,15 @@ public class Main {
     // now launch all the threads
     executor = Executors.newFixedThreadPool(Config.threads);
 
-    System.out.println("Created executors");
+    log.info("Created executors");
 
+    SchemaRepository repo = new SchemaRepository();
     // now create an object to consume the messages
     for (final KafkaStream stream : streams) {
-      executor.submit(new InFluxConsumer(stream));
+      if (avro) executor.submit(new InFluxAvroConsumer(repo, stream));
+      else executor.submit(new InFluxJSONConsumer(stream));
 //      executor.submit(new ConsoleConsumer(stream, clusterName));
-      System.out.println("submitted task");
+      log.info("submitted task");
     }
   }
 
@@ -85,6 +94,14 @@ public class Main {
     Config.influxPass = props.getProperty(Config.KEY_INFLUX_PASSWORD);
     String threadsStr = props.getProperty(Config.KEY_THREAD_COUNT);
     if (threadsStr != null) Config.threads = Integer.parseInt(threadsStr);
+
+    String serializer = props.getProperty("serializer");
+    if (serializer == null) throw new RuntimeException("Missing configuration 'serializer' in configuration file "+CONFIG_FILE+". Should be 'avro' or 'json'.");
+    serializer = serializer.toLowerCase();
+    if (serializer.equals("json")) avro=false;
+    else if (serializer.equals("avro")) avro = true;
+    else throw new RuntimeException("Invalid configuration value for 'serializer' in configuration file "+CONFIG_FILE+" ("+serializer+"). Should be 'avro' or 'json'.");
+
     checkConfig();
   }
 
@@ -113,7 +130,7 @@ public class Main {
 
   public static void main(String[] args) throws Exception {
     init();
-    System.out.println("Starting up consumer:" + Config.asString());
+    log.info("Starting up consumer:" + Config.asString());
     Main main = new Main();
     main.run();
   }

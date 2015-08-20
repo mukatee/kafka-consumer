@@ -1,4 +1,4 @@
-package net.kanstren.kafka.influx;
+package osmo.monitoring.kafka.influx;
 
 /**
  * Defines used configurations options, as well as configuration file keys.
