@@ -119,7 +119,7 @@
               <goal>schema</goal>
             </goals>
             <configuration>
-              <sourceDirectory>${project.basedir}/src/net/kanstren/kafka/influx/avro/</sourceDirectory>
+              <sourceDirectory>${project.basedir}/schemas</sourceDirectory>
               <outputDirectory>${project.basedir}/src/</outputDirectory>
             </configuration>
           </execution>

@@ -22,7 +22,9 @@ import org.influxdb.dto.Point;
 import osmo.monitoring.kafka.influx.Config;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -78,14 +80,19 @@ public class InFluxAvroConsumer implements Runnable {
     byte schemaId = msg[0];
     Schema schema = repo.schemaFor(schemaId);
     GenericDatumReader<GenericRecord> reader = repo.readerFor(schemaId);
-    List<Schema.Field> fields = schema.getFields();
+    //TODO: test for handling of invalid id values (not in repo)
+    Schema.Field headerField = schema.getField("header");
+    Schema headerSchema = headerField.schema();
+    List<Schema.Field> headerFields = headerSchema.getFields();
+    Schema.Field bodyField = schema.getField("body");
+    Schema bodySchema = bodyField.schema();
+    List<Schema.Field> bodyFields = bodySchema.getFields();
 
     Decoder d = DecoderFactory.get().binaryDecoder(msg, 1, msg.length-1, null);
     try {
       GenericRecord record = reader.read(null, d);
-      String type = record.get("type").toString();
-      String tom = record.get("tom").toString();
-      long time = (Long) record.get("time");
+      GenericRecord header = (GenericRecord)record.get("header");
+      GenericRecord body = (GenericRecord)record.get("body");
 
       BatchPoints batchPoints = BatchPoints
               .database(Config.influxDbName)
@@ -94,7 +101,7 @@ public class InFluxAvroConsumer implements Runnable {
               .consistency(InfluxDB.ConsistencyLevel.ALL)
               .build();
 
-      multiPoint(record, fields, batchPoints, time, type, tom);
+      multiPoint(header, body, headerFields, bodyFields, batchPoints);
 
       db.write(batchPoints);
       log.trace("Stored msg:"+record);
@@ -103,22 +110,28 @@ public class InFluxAvroConsumer implements Runnable {
     }
   }
 
-  /**
-   * Multi-point means we need to parse multiple separate values from the same JSON and store each separately into InfluxDB.
-   * This is due to possibly missing some values for some entries and InfluxDB resulting in ignoring all the records if one field value is missed.
-   * If separate values are stored for each item and missing values are not stored at all, grafana will show everything OK.
-   */
-  private void multiPoint(GenericRecord record, List<Schema.Field> fields, BatchPoints batch, long time, String tom, String type) {
-    for (Schema.Field field : fields) {
-      String fieldName = field.name();
-      if (fieldName.equals("tom") || fieldName.equals("type") || fieldName.equals("time")) continue;
-      String name = type+"_"+fieldName;
-      Point.Builder builder = Point.measurement(name);
-      builder.time(time, TimeUnit.MILLISECONDS);
-      Object value = record.get(fieldName);
-      builder.field("value", value);
+  private void multiPoint(GenericRecord header, GenericRecord body, List<Schema.Field> headerFields, List<Schema.Field> bodyFields, BatchPoints batch) {
+    String type = header.get("type").toString();
+    type = type.replace(' ', '_');
+    long time = (Long) header.get("time");
+    Map<String, String> tags = new HashMap<>();
+    for (Schema.Field field : headerFields) {
+      String tagName = field.name();
+      Object value = header.get(tagName);
+      if (tagName.equals("type") || tagName.equals("time")) continue;
       if (value == null) continue;
-      builder.tag("tom", tom);
+      tags.put(tagName, value.toString());
+    }
+    for (Schema.Field field : bodyFields) {
+      String fieldName = field.name();
+      Object value = body.get(fieldName);
+      if (value == null) continue;
+      Point.Builder builder = Point.measurement(type);
+      builder.time(time, TimeUnit.MILLISECONDS);
+      builder.field("value", value);
+      for (Map.Entry<String, String> entry : tags.entrySet()) {
+        builder.tag(entry.getKey(), entry.getValue());
+      }
       setValue(builder, field.schema(), value);
       Point point = builder.build();
       batch.point(point);

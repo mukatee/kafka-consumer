@@ -9,7 +9,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import osmo.common.TestUtils;
-import osmo.monitoring.kafka.influx.json.InFluxJSONConsumer;
 
 import java.util.List;
 import java.util.Map;
@@ -19,7 +18,7 @@ import static org.testng.Assert.assertEquals;
 /**
  * @author Teemu Kanstren.
  */
-public class InFluxTests {
+public class InFluxJSONTests {
   private InFluxJSONConsumer influx = null;
   private InfluxDB db = null;
 
@@ -41,7 +40,7 @@ public class InFluxTests {
 
   @Test
   public void errorMsg() {
-    String msg = TestUtils.getResource(InFluxTests.class, "test_msg_error.json");
+    String msg = TestUtils.getResource(InFluxJSONTests.class, "test_msg_error.json");
     influx.process(msg);
     QueryResult result = db.query(new Query("select * from test_oid3", Config.influxDbName));
     checkGenerals(result, 1, "1.1.1.2.1", "127.0.0.1:155", "test target 3", "error", "test_oid3");
@@ -71,7 +70,7 @@ public class InFluxTests {
 
   @Test
   public void floatMeasure() {
-    String msg = TestUtils.getResource(InFluxTests.class, "test_msg_cpu_float.json");
+    String msg = TestUtils.getResource(InFluxJSONTests.class, "test_msg_cpu_float.json");
     influx.process(msg);
     QueryResult result = db.query(new Query("select * from cpu_load", Config.influxDbName));
     checkGenerals(result, 1, "1.1.1.2.1", "127.0.0.1:155", "server01", "value", "cpu_load");
@@ -79,9 +78,9 @@ public class InFluxTests {
 
   @Test
   public void floatMeasures2() {
-    String msg = TestUtils.getResource(InFluxTests.class, "test_msg_cpu_float.json");
+    String msg = TestUtils.getResource(InFluxJSONTests.class, "test_msg_cpu_float.json");
     influx.process(msg);
-    msg = TestUtils.getResource(InFluxTests.class, "test_msg_cpu_int.json");
+    msg = TestUtils.getResource(InFluxJSONTests.class, "test_msg_cpu_int.json");
     influx.process(msg);
     QueryResult result = db.query(new Query("select * from cpu_load", Config.influxDbName));
     checkGenerals(result, 2, "1.1.1.2.1", "127.0.0.1:155", "server01", "value", "cpu_load");
