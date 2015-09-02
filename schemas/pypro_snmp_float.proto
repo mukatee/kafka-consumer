@@ -1,0 +1,18 @@
+package pypro.snmp;
+
+message SNMPFloat {
+  required Header header = 1;
+  required Body body = 2;
+}
+
+message Header {
+  required uint64 time = 1;
+  required string tom = 2;
+  required string type = 3;
+  required string oid = 4;
+  required string address = 5;
+}
+
+message Body {
+  required double value = 1;
+}
