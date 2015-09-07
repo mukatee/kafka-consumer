@@ -22,6 +22,7 @@ import org.influxdb.dto.Point;
 import osmo.monitoring.kafka.influx.Config;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +71,11 @@ public class InFluxAvroConsumer implements Runnable {
     ConsumerIterator<byte[], byte[]> it = stream.iterator();
     while (it.hasNext()) {
       byte[] msg = it.next().message();
-      log.trace("Thread " + id + ":: " + msg);
+      if (msg.length < 2) {
+        log.info("ignoring short msg, assuming topic polling");
+        continue;
+      }
+      log.trace("Thread " + id + ":: " + Arrays.toString(msg));
       process(msg);
     }
     log.info("Shutting down consumer Thread: " + id);
@@ -88,7 +93,7 @@ public class InFluxAvroConsumer implements Runnable {
     Schema bodySchema = bodyField.schema();
     List<Schema.Field> bodyFields = bodySchema.getFields();
 
-    Decoder d = DecoderFactory.get().binaryDecoder(msg, 1, msg.length-1, null);
+    Decoder d = DecoderFactory.get().binaryDecoder(msg, 1, msg.length - 1, null);
     try {
       GenericRecord record = reader.read(null, d);
       GenericRecord header = (GenericRecord)record.get("header");
@@ -106,13 +111,15 @@ public class InFluxAvroConsumer implements Runnable {
       db.write(batchPoints);
       log.trace("Stored msg:"+record);
     } catch (IOException e) {
-      log.error("Error while processing received Kafka msg. Skipping this msg.", e);
+      log.error("Error while processing received Kafka msg. Skipping this msg:"+ Arrays.toString(msg), e);
     }
   }
 
   private void multiPoint(GenericRecord header, GenericRecord body, List<Schema.Field> headerFields, List<Schema.Field> bodyFields, BatchPoints batch) {
     String type = header.get("type").toString();
     type = type.replace(' ', '_');
+    boolean multipoint = type.startsWith("_");
+    if (multipoint) type = type.substring(1);
     long time = (Long) header.get("time");
     Map<String, String> tags = new HashMap<>();
     for (Schema.Field field : headerFields) {
@@ -122,19 +129,35 @@ public class InFluxAvroConsumer implements Runnable {
       if (value == null) continue;
       tags.put(tagName, value.toString());
     }
-    for (Schema.Field field : bodyFields) {
-      String fieldName = field.name();
-      Object value = body.get(fieldName);
-      if (value == null) continue;
-      Point.Builder builder = Point.measurement(type);
-      builder.time(time, TimeUnit.MILLISECONDS);
-      builder.field("value", value);
-      for (Map.Entry<String, String> entry : tags.entrySet()) {
-        builder.tag(entry.getKey(), entry.getValue());
+    if (multipoint) {
+      for (Schema.Field field : bodyFields) {
+        String fieldName = field.name();
+        Object value = body.get(fieldName);
+        if (value == null) continue;
+        Point.Builder builder = Point.measurement(type+"_"+fieldName);
+        builder.time(time, TimeUnit.MILLISECONDS);
+//      builder.field("value", value);
+        for (Map.Entry<String, String> entry : tags.entrySet()) {
+          builder.tag(entry.getKey(), entry.getValue());
+        }
+        setValue(builder, field.schema(), value);
+        Point point = builder.build();
+        batch.point(point);
       }
-      setValue(builder, field.schema(), value);
-      Point point = builder.build();
-      batch.point(point);
+    } else {
+      for (Schema.Field field : bodyFields) {
+        String fieldName = field.name();
+        Object value = body.get(fieldName);
+        if (value == null) continue;
+        Point.Builder builder = Point.measurement(type);
+        builder.time(time, TimeUnit.MILLISECONDS);
+        for (Map.Entry<String, String> entry : tags.entrySet()) {
+          builder.tag(entry.getKey(), entry.getValue());
+        }
+        setValue(builder, field.schema(), value);
+        Point point = builder.build();
+        batch.point(point);
+      }
     }
   }
 

@@ -1,1 +1,3 @@
-pypro_snmp.avsc=1
+pypro_snmp_float.avsc=1
+pypro_snmp_int.avsc=2
+pypro_snmp_str.avsc=3

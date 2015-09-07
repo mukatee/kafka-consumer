@@ -14,10 +14,9 @@ import org.testng.annotations.Test;
 import osmo.common.TestUtils;
 import osmo.monitoring.kafka.influx.avro.InFluxAvroConsumer;
 import osmo.monitoring.kafka.influx.avro.SchemaRepository;
-import osmo.monitoring.kafka.influx.json.InFluxJSONConsumer;
-import pypro.snmp.SNMPBody;
-import pypro.snmp.SNMPHeader;
-import pypro.snmp.SNMPMeasure;
+import pypro.snmp.SNMPFloat;
+import pypro.snmp.SNMPFloatBody;
+import pypro.snmp.SNMPFloatHeader;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
@@ -98,16 +97,16 @@ public class InFluxAvroTests {
     assertEquals(name, expectedName);
   }
 
-  private SNMPMeasure createMsg(String addr, String tom, String oid, long time, String type) {
-    SNMPMeasure snmp = new SNMPMeasure();
-    SNMPHeader header = new SNMPHeader();
-    header.setAddr(addr);
+  private SNMPFloat createFloatMsg(String addr, String tom, String oid, long time, String type) {
+    SNMPFloat snmp = new SNMPFloat();
+    SNMPFloatHeader header = new SNMPFloatHeader();
+    header.setAddress(addr);
     header.setTom(tom);
     header.setOid(oid);
     header.setTime(time);
     header.setType(type);
 
-    SNMPBody body = new SNMPBody();
+    SNMPFloatBody body = new SNMPFloatBody();
 
     snmp.setHeader(header);
     snmp.setBody(body);
@@ -115,17 +114,17 @@ public class InFluxAvroTests {
   }
 
   private void processFloat(double value, String addr, String tom, String oid, long time, String type) throws Exception {
-    SNMPMeasure snmp = createMsg(addr, tom, oid, time, type);
-    SNMPBody body = snmp.getBody();
-    body.setValueFloat(value);
+    SNMPFloat snmp = createFloatMsg(addr, tom, oid, time, type);
+    SNMPFloatBody body = snmp.getBody();
+    body.setValue(value);
 
-    byte[] msg = transform(snmp);
+    byte[] msg = transform(snmp, "pypro_snmp_float");
     influx.process(msg);
   }
 
-  private byte[] transform(SNMPMeasure snmp) throws Exception {
-    Schema schema = new Schema.Parser().parse(new FileInputStream("schemas/pypro_snmp.avsc"));
-    SpecificDatumWriter<SNMPMeasure> writer = new SpecificDatumWriter<>(schema);
+  private byte[] transform(SNMPFloat snmp, String schemaName) throws Exception {
+    Schema schema = new Schema.Parser().parse(new FileInputStream("schemas/"+schemaName+".avsc"));
+    SpecificDatumWriter<SNMPFloat> writer = new SpecificDatumWriter<>(schema);
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     os.write(1);
     BinaryEncoder enc = EncoderFactory.get().binaryEncoder(os, null);
