@@ -45,12 +45,15 @@ public class InFluxAvroConsumer implements Runnable {
   /** To create unique thread id values. */
   private static int nextId = 1;
   private final SchemaRepository repo;
+  private int count = 0;
 
   public InFluxAvroConsumer(SchemaRepository repo, KafkaStream stream) {
     this.repo = repo;
     this.stream = stream;
     this.id = nextId++;
     db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
+    db.enableBatch(2000, 1, TimeUnit.SECONDS);
+//    db.setLogLevel(InfluxDB.LogLevel.HEADERS);
     db.createDatabase(Config.influxDbName);
   }
 
@@ -75,7 +78,7 @@ public class InFluxAvroConsumer implements Runnable {
         log.info("ignoring short msg, assuming topic polling");
         continue;
       }
-      log.trace("Thread " + id + ":: " + Arrays.toString(msg));
+//      log.trace("Thread " + id + ":: " + Arrays.toString(msg));
       process(msg);
     }
     log.info("Shutting down consumer Thread: " + id);
@@ -99,23 +102,14 @@ public class InFluxAvroConsumer implements Runnable {
       GenericRecord header = (GenericRecord)record.get("header");
       GenericRecord body = (GenericRecord)record.get("body");
 
-      BatchPoints batchPoints = BatchPoints
-              .database(Config.influxDbName)
-              .tag("async", "true")
-              .retentionPolicy("default")
-              .consistency(InfluxDB.ConsistencyLevel.ALL)
-              .build();
-
-      multiPoint(header, body, headerFields, bodyFields, batchPoints);
-
-      db.write(batchPoints);
-      log.trace("Stored msg:"+record);
+      multiPoint(header, body, headerFields, bodyFields);
+//      log.trace("Stored msg:"+record);
     } catch (IOException e) {
       log.error("Error while processing received Kafka msg. Skipping this msg:"+ Arrays.toString(msg), e);
     }
   }
 
-  private void multiPoint(GenericRecord header, GenericRecord body, List<Schema.Field> headerFields, List<Schema.Field> bodyFields, BatchPoints batch) {
+  private void multiPoint(GenericRecord header, GenericRecord body, List<Schema.Field> headerFields, List<Schema.Field> bodyFields) {
     String type = header.get("type").toString();
     type = type.replace(' ', '_');
     boolean multipoint = type.startsWith("_");
@@ -142,7 +136,8 @@ public class InFluxAvroConsumer implements Runnable {
         }
         setValue(builder, field.schema(), value);
         Point point = builder.build();
-        batch.point(point);
+        db.write(Config.influxDbName, "default", point);
+        count++;
       }
     } else {
       for (Schema.Field field : bodyFields) {
@@ -156,9 +151,12 @@ public class InFluxAvroConsumer implements Runnable {
         }
         setValue(builder, field.schema(), value);
         Point point = builder.build();
-        batch.point(point);
+        db.write(Config.influxDbName, "default", point);
+        count++;
       }
     }
+    if (count % 100 == 0) System.out.print(count+",");
+    if (count % 1000 == 0) System.out.println();
   }
 
   private void setValue(Point.Builder builder, Schema schema, Object value) {
