@@ -8,6 +8,7 @@ import osmo.monitoring.kafka.influx.avro.SchemaRepository;
 import osmo.monitoring.kafka.influx.json.InFluxJSONConsumer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import osmo.monitoring.kafka.influx.telegraf.InFluxTelegrafConsumer;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,7 +29,6 @@ public class Main {
   private ExecutorService executor;
   public static final String CONFIG_FILE = "kafka-importer.properties";
   private static final Logger log = LogManager.getLogger();
-  private static boolean avro = true;
 
   public Main() {
     consumer = kafka.consumer.Consumer.createJavaConsumerConnector(createConsumerConfig());
@@ -48,24 +48,39 @@ public class Main {
 
   public void run() {
     Map<String, Integer> topicCountMap = new HashMap<>();
-    topicCountMap.put(Config.kafkaTopic, Config.threads);
+    topicCountMap.put(Config.kafkaAvroTopic, Config.threads);
+    topicCountMap.put(Config.kafkaJsonTopic, Config.threads);
+    topicCountMap.put(Config.kafkaTelegrafTopic, Config.threads);
     Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumer.createMessageStreams(topicCountMap);
-    List<KafkaStream<byte[], byte[]>> streams = consumerMap.get(Config.kafkaTopic);
-
-    // now launch all the threads
-    executor = Executors.newFixedThreadPool(Config.threads);
-
+    //note: here we create number of threads that is the number per stream times the number of streams
+    //this is required as each stream read blocks the thread it runs on..
+    int nThreads = Config.threads * 3;
+    executor = Executors.newFixedThreadPool(nThreads);
     log.info("Created executors");
 
+    List<KafkaStream<byte[], byte[]>> avroStreams = consumerMap.get(Config.kafkaAvroTopic);
     SchemaRepository repo = new SchemaRepository();
-    // now create an object to consume the messages
-    for (final KafkaStream stream : streams) {
-      if (avro) executor.submit(new InFluxAvroConsumer(repo, stream));
-      else executor.submit(new InFluxJSONConsumer(stream));
-//      executor.submit(new ConsoleConsumer(stream, clusterName));
-      log.info("submitted task");
+    //now create objects to consume the messages
+    for (final KafkaStream stream : avroStreams) {
+      executor.submit(new InFluxAvroConsumer(repo, stream));
+      log.info("submitted avro task");
+    }
+
+    List<KafkaStream<byte[], byte[]>> jsonStreams = consumerMap.get(Config.kafkaJsonTopic);
+    //now create objects to consume the messages
+    for (final KafkaStream stream : jsonStreams) {
+      executor.submit(new InFluxJSONConsumer(stream));
+      log.info("submitted json task");
+    }
+
+    List<KafkaStream<byte[], byte[]>> teleStreams = consumerMap.get(Config.kafkaTelegrafTopic);
+    //now create objects to consume the messages
+    for (final KafkaStream stream : teleStreams) {
+      executor.submit(new InFluxTelegrafConsumer(stream));
+      log.info("submitted telegraf task");
     }
   }
+
 
   private static ConsumerConfig createConsumerConfig() {
     Properties props = new Properties();
@@ -84,7 +99,9 @@ public class Main {
       throw new FileNotFoundException("Could not load configuration file " + CONFIG_FILE + " from current directory.");
     Properties props = new Properties();
     props.load(new FileInputStream(configFile));
-    Config.kafkaTopic = props.getProperty(Config.KEY_KAFKA_TOPIC);
+    Config.kafkaAvroTopic = props.getProperty(Config.KEY_KAFKA_AVRO_TOPIC);
+    Config.kafkaJsonTopic = props.getProperty(Config.KEY_KAFKA_JSON_TOPIC);
+    Config.kafkaTelegrafTopic = props.getProperty(Config.KEY_KAFKA_TELEGRAF_TOPIC);
     Config.zooUrl = props.getProperty(Config.KEY_ZOOKEEPER_URL);
     Config.kafkaGroup = props.getProperty(Config.KEY_KAFKA_GROUP);
     Config.kafkaCluster = props.getProperty(Config.KEY_KAFKA_CLUSTER);
@@ -95,20 +112,17 @@ public class Main {
     String threadsStr = props.getProperty(Config.KEY_THREAD_COUNT);
     if (threadsStr != null) Config.threads = Integer.parseInt(threadsStr);
 
-    String serializer = props.getProperty("serializer");
-    if (serializer == null) throw new RuntimeException("Missing configuration 'serializer' in configuration file "+CONFIG_FILE+". Should be 'avro' or 'json'.");
-    serializer = serializer.toLowerCase();
-    if (serializer.equals("json")) avro=false;
-    else if (serializer.equals("avro")) avro = true;
-    else throw new RuntimeException("Invalid configuration value for 'serializer' in configuration file "+CONFIG_FILE+" ("+serializer+"). Should be 'avro' or 'json'.");
-
     checkConfig();
   }
 
   private static void checkConfig() {
     String errors = "";
-    if (Config.kafkaTopic == null)
-      errors += "Missing property '" + Config.KEY_KAFKA_TOPIC + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.kafkaAvroTopic == null)
+      errors += "Missing property '" + Config.KEY_KAFKA_AVRO_TOPIC + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.kafkaJsonTopic == null)
+      errors += "Missing property '" + Config.KEY_KAFKA_JSON_TOPIC + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.kafkaTelegrafTopic == null)
+      errors += "Missing property '" + Config.KEY_KAFKA_TELEGRAF_TOPIC + "' in configuration file " + CONFIG_FILE + "\n";
     if (Config.zooUrl == null)
       errors += "Missing property '" + Config.KEY_ZOOKEEPER_URL + "' in configuration file " + CONFIG_FILE + "\n";
     if (Config.kafkaGroup == null)
