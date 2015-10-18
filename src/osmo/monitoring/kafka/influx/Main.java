@@ -3,6 +3,7 @@ package osmo.monitoring.kafka.influx;
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.ConsumerConnector;
+import osmo.monitoring.kafka.cassanda.CassandaAvroConsumer;
 import osmo.monitoring.kafka.influx.avro.InFluxAvroConsumer;
 import osmo.monitoring.kafka.influx.avro.SchemaRepository;
 import osmo.monitoring.kafka.influx.json.InFluxJSONConsumer;
@@ -58,26 +59,37 @@ public class Main {
     executor = Executors.newFixedThreadPool(nThreads);
     log.info("Created executors");
 
+    boolean influx = Config.consumerType.equals("influx");
+
     List<KafkaStream<byte[], byte[]>> avroStreams = consumerMap.get(Config.kafkaAvroTopic);
     SchemaRepository repo = new SchemaRepository();
     //now create objects to consume the messages
     for (final KafkaStream stream : avroStreams) {
-      executor.submit(new InFluxAvroConsumer(repo, stream));
-      log.info("submitted avro task");
+      if (influx) executor.submit(new InFluxAvroConsumer(repo, stream));
+      else executor.submit(new CassandaAvroConsumer(repo, stream));
+      log.info("submitted avro tasks");
     }
 
     List<KafkaStream<byte[], byte[]>> jsonStreams = consumerMap.get(Config.kafkaJsonTopic);
     //now create objects to consume the messages
     for (final KafkaStream stream : jsonStreams) {
-      executor.submit(new InFluxJSONConsumer(stream));
-      log.info("submitted json task");
+      if (influx) {
+        executor.submit(new InFluxJSONConsumer(stream));
+        log.info("submitted json task");
+      } else {
+        log.info("no json consumer for cassandra");
+      }
     }
 
     List<KafkaStream<byte[], byte[]>> teleStreams = consumerMap.get(Config.kafkaTelegrafTopic);
     //now create objects to consume the messages
     for (final KafkaStream stream : teleStreams) {
-      executor.submit(new InFluxTelegrafConsumer(stream));
-      log.info("submitted telegraf task");
+      if (influx) {
+        executor.submit(new InFluxTelegrafConsumer(stream));
+        log.info("submitted telegraf task");
+      } else {
+        log.info("no telegraf consumer for cassandra");
+      }
     }
   }
 
@@ -93,7 +105,7 @@ public class Main {
     return new ConsumerConfig(props);
   }
 
-  private static void init() throws Exception {
+  public static void init() throws Exception {
     File configFile = new File(CONFIG_FILE);
     if (!configFile.exists())
       throw new FileNotFoundException("Could not load configuration file " + CONFIG_FILE + " from current directory.");
@@ -109,6 +121,10 @@ public class Main {
     Config.influxDbUrl = props.getProperty(Config.KEY_INFLUX_DB_URL);
     Config.influxUser = props.getProperty(Config.KEY_INFLUX_USERNAME);
     Config.influxPass = props.getProperty(Config.KEY_INFLUX_PASSWORD);
+    Config.cassandraUrl = props.getProperty(Config.KEY_CASSANDRA_URL);
+    Config.cassandraKeySpace = props.getProperty(Config.KEY_CASSANDRA_KEYSPACE);
+    Config.cassandraReplicationFactor = props.getProperty(Config.KEY_CASSANDRA_REPLICATION_FACTOR);
+    Config.consumerType = props.getProperty(Config.KEY_CONSUMER_TYPE);
     String threadsStr = props.getProperty(Config.KEY_THREAD_COUNT);
     if (threadsStr != null) Config.threads = Integer.parseInt(threadsStr);
 
@@ -139,6 +155,18 @@ public class Main {
       errors += "Missing property '" + Config.KEY_INFLUX_PASSWORD + "' in configuration file " + CONFIG_FILE + "\n";
     if (Config.threads == null)
       errors += "Missing property '" + Config.KEY_THREAD_COUNT + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.cassandraUrl == null)
+      errors += "Missing property '" + Config.KEY_CASSANDRA_URL + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.cassandraKeySpace == null)
+      errors += "Missing property '" + Config.KEY_CASSANDRA_KEYSPACE + "' in configuration file " + CONFIG_FILE + "\n";
+    if (Config.consumerType == null)
+      errors += "Missing property '" + Config.KEY_CONSUMER_TYPE + "' in configuration file " + CONFIG_FILE + "\n";
+    else if (!Config.consumerType.equals("influx") && !Config.consumerType.equals("cassandra")) {
+      errors += "Invalid value for property '" + Config.KEY_CONSUMER_TYPE + "' in configuration file " + CONFIG_FILE + ".\n";
+      errors += "Allowed values are 'influx' and 'cassandra'. Was "+Config.consumerType+".\n";
+    }
+    if (Config.cassandraReplicationFactor == null)
+      errors += "Missing property '" + Config.KEY_CASSANDRA_REPLICATION_FACTOR + "' in configuration file " + CONFIG_FILE + "\n";
     if (errors.length() > 0) throw new RuntimeException(errors);
   }
 

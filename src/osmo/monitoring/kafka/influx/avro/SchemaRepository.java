@@ -54,4 +54,12 @@ public class SchemaRepository {
   public GenericDatumReader<GenericRecord> readerFor(int id) {
     return readers.get(id);
   }
+
+  public Collection<Schema> getSchemas() {
+    return schemas.values();
+  }
+
+  public Map<Integer, Schema> getSchemaMap() {
+    return schemas;
+  }
 }

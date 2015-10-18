@@ -1,4 +1,8 @@
-kafka_topic=pypro
+kafka_avro_topic=pypro_avro
+kafka_json_topic=pypro_json
+kafka_telegraf_topic=telegraf
+cassandra_url=192.168.2.153
+cassandra_keyspace=my_space
 zookeeper_url=localhost
 kafka_group=my_group
 kafka_cluster=my_cluster
@@ -7,4 +11,4 @@ influx_db_name=test1
 influx_db_url=http://localhost:8086
 influx_username=myuser
 influx_password=mypass
-serializer=avro
+consumer_type=influx

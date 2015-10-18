@@ -28,6 +28,14 @@ public class Config {
   public static final String KEY_INFLUX_USERNAME = "influx_username";
   /** For defining the password to connect to the InFlux DB server. */
   public static final String KEY_INFLUX_PASSWORD = "influx_password";
+  /** Address for Cassandra server. */
+  public static final String KEY_CASSANDRA_URL = "cassandra_url";
+  /** Name of Cassandra keyspace under which to store measurements. */
+  public static final String KEY_CASSANDRA_KEYSPACE = "cassandra_keyspace";
+  /** Cassandra keyspace replication factor. */
+  public static final String KEY_CASSANDRA_REPLICATION_FACTOR = "cassandra_replication_factor";
+  /** Type of consumer. Currently "influx" or "cassandra". */
+  public static final String KEY_CONSUMER_TYPE = "consumer_type";
 
   /** URL for the Kafka Zookeeper */
   public static String zooUrl = null;
@@ -51,6 +59,10 @@ public class Config {
   public static String influxUser = null;
   /** Password for the Influx DB. */
   public static String influxPass = null;
+  public static String cassandraUrl = null;
+  public static String cassandraKeySpace = null;
+  public static String cassandraReplicationFactor = null;
+  public static String consumerType = null;
 
   public static String asString() {
     return "Config{" +
@@ -65,6 +77,10 @@ public class Config {
             ", influxDbUrl='" + influxDbUrl + '\'' +
             ", influxUser='" + influxUser + '\'' +
             ", influxPass='" + influxPass + '\'' +
+            ", cassandraUrl='" + cassandraUrl + '\'' +
+            ", cassandraKeySpace='" + cassandraKeySpace + '\'' +
+            ", cassandraReplicationFactor='" + cassandraReplicationFactor + '\'' +
+            ", consumerType='" + consumerType + '\'' +
             '}';
   }
 }

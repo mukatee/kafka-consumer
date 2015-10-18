@@ -78,7 +78,7 @@ public class InFluxAvroConsumer implements Runnable {
         log.info("ignoring short msg, assuming topic polling");
         continue;
       }
-//      log.trace("Thread " + id + ":: " + Arrays.toString(msg));
+      log.trace("Thread " + id + ":: " + Arrays.toString(msg));
       process(msg);
     }
     log.info("Shutting down consumer Thread: " + id);
@@ -124,8 +124,11 @@ public class InFluxAvroConsumer implements Runnable {
       tags.put(tagName, value.toString());
     }
     if (multipoint) {
+      int counter = getObjectCounter(body);
+      //TODO: check if multipoint is really necessary or if we can graph the data in other ways from influx + grafana (sparse data graphing)
       for (Schema.Field field : bodyFields) {
         String fieldName = field.name();
+//        if (fieldName.equals("object_counter")) continue;
         Object value = body.get(fieldName);
         if (value == null) continue;
         Point.Builder builder = Point.measurement(type+"_"+fieldName);
@@ -135,7 +138,11 @@ public class InFluxAvroConsumer implements Runnable {
           builder.tag(entry.getKey(), entry.getValue());
         }
         setValue(builder, field.schema(), value);
+        if (counter > 0) {
+          builder.tag("object_id", ""+counter);
+        }
         Point point = builder.build();
+        log.trace("Writing to InFlux:"+point);
         db.write(Config.influxDbName, "default", point);
         count++;
       }
@@ -144,19 +151,33 @@ public class InFluxAvroConsumer implements Runnable {
         String fieldName = field.name();
         Object value = body.get(fieldName);
         if (value == null) continue;
-        Point.Builder builder = Point.measurement(type);
+        Point.Builder builder = null;
+        try {
+          builder = Point.measurement(type);
+        } catch (Throwable e) {
+          e.printStackTrace();
+        }
         builder.time(time, TimeUnit.MILLISECONDS);
         for (Map.Entry<String, String> entry : tags.entrySet()) {
           builder.tag(entry.getKey(), entry.getValue());
         }
         setValue(builder, field.schema(), value);
         Point point = builder.build();
+        log.trace("Writing to InFlux:"+point);
         db.write(Config.influxDbName, "default", point);
         count++;
       }
     }
     if (count % 100 == 0) System.out.print(count+",");
     if (count % 1000 == 0) System.out.println();
+  }
+
+  private int getObjectCounter(GenericRecord body) {
+    Object value = body.get("object_counter");
+    if (value == null) {
+      return -1;
+    }
+    return (int)body.get("object_counter");
   }
 
   private void setValue(Point.Builder builder, Schema schema, Object value) {

@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS test_ks.SNMPFloat (
+time timestamp,
+type text,
+tom text,
+address text,
+oid text,
+value double,
+PRIMARY KEY (time, type)
+);

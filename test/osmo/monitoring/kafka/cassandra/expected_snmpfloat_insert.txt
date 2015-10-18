@@ -1,0 +1,1 @@
+INSERT INTO test_ks.SNMPFloat (time, type, tom, address, oid, value) VALUES (?, ?, ?, ?, ?, ?);
