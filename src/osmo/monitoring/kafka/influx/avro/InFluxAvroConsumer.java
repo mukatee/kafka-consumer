@@ -78,7 +78,7 @@ public class InFluxAvroConsumer implements Runnable {
         log.info("ignoring short msg, assuming topic polling");
         continue;
       }
-      log.trace("Thread " + id + ":: " + Arrays.toString(msg));
+//      log.trace("Thread " + id + ":: " + Arrays.toString(msg));
       process(msg);
     }
     log.info("Shutting down consumer Thread: " + id);
@@ -104,7 +104,7 @@ public class InFluxAvroConsumer implements Runnable {
 
       multiPoint(header, body, headerFields, bodyFields);
 //      log.trace("Stored msg:"+record);
-    } catch (IOException e) {
+    } catch (Exception e) {
       log.error("Error while processing received Kafka msg. Skipping this msg:"+ Arrays.toString(msg), e);
     }
   }
@@ -163,12 +163,12 @@ public class InFluxAvroConsumer implements Runnable {
         }
         setValue(builder, field.schema(), value);
         Point point = builder.build();
-        log.trace("Writing to InFlux:"+point);
+//        log.trace("Writing to InFlux:"+point);
         db.write(Config.influxDbName, "default", point);
         count++;
       }
     }
-    if (count % 100 == 0) System.out.print(count+",");
+    if (count % 100 == 0) System.out.print("AVRO:"+count+",");
     if (count % 1000 == 0) System.out.println();
   }
 
@@ -183,15 +183,31 @@ public class InFluxAvroConsumer implements Runnable {
   private void setValue(Point.Builder builder, Schema schema, Object value) {
     switch (schema.getType()) {
       case DOUBLE:
+        if (value instanceof String) {
+          log.warn("Expected double for "+schema.getName()+", got string:"+value+". Ignoring value.");
+          break;
+        }
         builder.field("value", value);
         break;
       case FLOAT:
+        if (value instanceof String) {
+          log.warn("Expected float for "+schema.getName()+", got string:"+value+". Ignoring value.");
+          break;
+        }
         builder.field("value", value);
         break;
       case INT:
+        if (value instanceof String) {
+          log.warn("Expected integer for "+schema.getName()+", got string:"+value+". Ignoring value.");
+          break;
+        }
         builder.field("value", value);
         break;
       case LONG:
+        if (value instanceof String) {
+          log.warn("Expected long for "+schema.getName()+", got string:"+value+". Ignoring value.");
+          break;
+        }
         builder.field("value", value);
         break;
       case STRING:

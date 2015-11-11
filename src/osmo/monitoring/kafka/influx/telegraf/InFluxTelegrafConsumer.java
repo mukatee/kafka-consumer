@@ -145,6 +145,7 @@ public class InFluxTelegrafConsumer implements Runnable {
     }
     setValue(builder, measure);
     Point point = builder.build();
+//    log.trace("Writing to InFlux:"+point);
     db.write(Config.influxDbName, "default", point);
     count++;
     if (count % 100 == 0) System.out.print(count + ",");
@@ -162,7 +163,8 @@ public class InFluxTelegrafConsumer implements Runnable {
     }
     if (value.endsWith("i")) {
       //its an integer
-      builder.field(name, Integer.parseInt(value.substring(0, value.length() - 1)));
+      String substring = value.substring(0, value.length() - 1);
+      builder.field(name, Long.parseLong(substring));
       return;
     }
     if (value.charAt(0) >= 48 && value.charAt(0) <= 57) {
