@@ -1,8 +1,10 @@
-package osmo.monitoring.kafka.cassanda;
+package net.kanstren.kafka.cassanda;
 
 import com.datastax.driver.core.*;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
+import net.kanstren.kafka.influx.Config;
+import net.kanstren.kafka.influx.avro.SchemaRepository;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -11,18 +13,13 @@ import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.util.Utf8;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.influxdb.dto.Point;
-import osmo.monitoring.kafka.influx.Config;
-import osmo.monitoring.kafka.influx.Main;
-import osmo.monitoring.kafka.influx.avro.SchemaRepository;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Kafka consumer listening to measurement data.
- * Reads the Kafka topic stream and stores received data to the configured InfluxDB instance.
+ * Reads the Kafka topic stream and stores received data to the configured Cassandra instance.
  *
  * @author Teemu Kanstren.
  */
@@ -32,12 +29,17 @@ public class CassandaAvroConsumer implements Runnable {
   private final KafkaStream stream;
   /** Identifier for the thread this consumer is running on. */
   private final int id;
+  /** Cassandra cluster. */
   private final Cluster cluster;
+  /** Cassandra session. */
   private final Session session;
   /** To create unique thread id values. */
   private static int nextId = 1;
+  /** Repository for Avro schemas. Needed to decode binary messages. */
   private final SchemaRepository repo;
+  /** Number of messages processed. */
   private int count = 0;
+  /** Cassandra insert statements for the Avro schemas. Key = schema id, value = insert statement. */
   private Map<Integer, PreparedStatement> insertStatements = new HashMap<>();
 
   public CassandaAvroConsumer(SchemaRepository repo, KafkaStream stream) {
@@ -49,28 +51,31 @@ public class CassandaAvroConsumer implements Runnable {
             .addContactPoint(Config.cassandraUrl)
             .build();
     Metadata metadata = cluster.getMetadata();
-    System.out.printf("Connected to cluster: %s\n", metadata.getClusterName());
+    log.debug("Connected to cluster: %s\n", metadata.getClusterName());
     for (Host host : metadata.getAllHosts()) {
-      System.out.printf("Datatacenter: %s; Host: %s; Rack: %s\n", host.getDatacenter(), host.getAddress(), host.getRack());
+      log.debug("Datatacenter: %s; Host: %s; Rack: %s\n", host.getDatacenter(), host.getAddress(), host.getRack());
     }
     this.session = cluster.connect();
     createSchemas();
     createInserts();
   }
 
-  public static void main(String[] args) throws Exception {
-    Main.init();
-    CassandaAvroConsumer cassandra = new CassandaAvroConsumer(new SchemaRepository(), null);
-  }
-
+  /**
+   * Create Cassandra tables for the Avro schemas (as needed).
+   */
   public void createSchemas() {
     String stmt = "CREATE KEYSPACE IF NOT EXISTS " + Config.cassandraKeySpace +
             " WITH replication = {'class':'SimpleStrategy', 'replication_factor':" + Config.cassandraReplicationFactor + "};";
-    log.debug("Createing Cassandra keyspace:"+stmt);
+    log.debug("Creating Cassandra keyspace:"+stmt);
     session.execute(stmt);
     createTables(repo);
   }
 
+  /**
+   * Create Cassandra tables for Avro schemas as needed.
+   *
+   * @param repo The schemas to create tables for.
+   */
   private void createTables(SchemaRepository repo) {
     Collection<Schema> schemas = repo.getSchemas();
     for (Schema schema : schemas) {
@@ -80,6 +85,14 @@ public class CassandaAvroConsumer implements Runnable {
     }
   }
 
+  /**
+   * Create a Cassandra CREATE TABLE statement for a given Avro schema.
+   * Primary key is always (time + type) combination.
+   * These are assumed to be unique and give good spread across the cluster.
+   *
+   * @param schema The schema to generate the CREATE TABLE for.
+   * @return The generated CREATE TABLE statement.
+   */
   public static String tableFor(Schema schema) {
     Schema.Field headerField = schema.getField("header");
     Schema headerSchema = headerField.schema();
@@ -105,6 +118,13 @@ public class CassandaAvroConsumer implements Runnable {
     return table;
   }
 
+  /**
+   * Create a Cassandra column for the CREATE TABLE statement for a given field in the Avro schema.
+   *
+   * @param fieldName The name of the field to generate the column string for.
+   * @param schema The schema where the given field belongs. Used to get field type.
+   * @return A string to put in a CREATE TABLE statement for the field in the schema.
+   */
   private static String columnFor(String fieldName, Schema schema) {
     String str = fieldName+" ";
     switch (schema.getType()) {
@@ -137,6 +157,9 @@ public class CassandaAvroConsumer implements Runnable {
     return str;
   }
 
+  /**
+   * Create the insert statements for the Avro schemas.
+   */
   private void createInserts() {
     Map<Integer, Schema> schemaMap = repo.getSchemaMap();
     schemaMap.forEach((id, schema) -> {
@@ -146,6 +169,12 @@ public class CassandaAvroConsumer implements Runnable {
     });
   }
 
+  /**
+   * Create a Cassandra insert statement for a specific Avro schema.
+   *
+   * @param schema The Avro schema to create the insert for.
+   * @return The insert statement to insert the type of Avro object into Cassandra.
+   */
   public static String insertFor(Schema schema) {
     Schema.Field headerField = schema.getField("header");
     Schema headerSchema = headerField.schema();
@@ -207,8 +236,15 @@ public class CassandaAvroConsumer implements Runnable {
     log.info("Shutting down Cassandra Avro consumer Thread: " + id);
   }
 
+  /**
+   * Process a binary message from Kafka.
+   *
+   * @param msg The Kafka message.
+   */
   public void process(byte[] msg) {
+    //always starts with the Avro schema id for decoding
     byte schemaId = msg[0];
+    //get the matching schema to decode with
     Schema schema = repo.schemaFor(schemaId);
     GenericDatumReader<GenericRecord> reader = repo.readerFor(schemaId);
     //TODO: test for handling of invalid id values (not in repo)
@@ -225,6 +261,7 @@ public class CassandaAvroConsumer implements Runnable {
       GenericRecord header = (GenericRecord) record.get("header");
       GenericRecord body = (GenericRecord) record.get("body");
 
+      //store the decoded message into Cassandra
       store(schemaId, header, body, headerFields, bodyFields);
 //      log.trace("Stored msg:"+record);
     } catch (IOException e) {
@@ -232,6 +269,15 @@ public class CassandaAvroConsumer implements Runnable {
     }
   }
 
+  /**
+   * Store the given Avro object into Cassandra.
+   *
+   * @param schemaId The Avro schema id.
+   * @param header Header schema for the Avro object.
+   * @param body Body schema for the Avro object.
+   * @param headerFields Header fields for the Avro object.
+   * @param bodyFields Body fields for the Avro object.
+   */
   private void store(int schemaId, GenericRecord header, GenericRecord body, List<Schema.Field> headerFields, List<Schema.Field> bodyFields) {
     String type = header.get("type").toString();
     type = type.replace(' ', '_');
@@ -245,6 +291,7 @@ public class CassandaAvroConsumer implements Runnable {
     parameters.add(new Date(time));
     parameters.add(type);
 
+    //here we need to be careful to iterate everything in the same order as we did in createing the INSERT statements
     for (Schema.Field field : headerFields) {
       String name = field.name();
       Object value = header.get(name);
@@ -268,6 +315,7 @@ public class CassandaAvroConsumer implements Runnable {
 
     count++;
 
+    //and then we stick it in Cassandra
     BoundStatement  bs = new BoundStatement(insertStatements.get(schemaId));
     bs.bind(parameters.toArray());
     session.execute(bs);

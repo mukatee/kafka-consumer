@@ -1,11 +1,11 @@
-package osmo.monitoring.kafka.cassandra;
+package net.kanstren.kafka.cassandra;
 
 import org.apache.avro.Schema;
 import org.testng.annotations.Test;
 import osmo.common.TestUtils;
-import osmo.monitoring.kafka.cassanda.CassandaAvroConsumer;
-import osmo.monitoring.kafka.influx.Config;
-import osmo.monitoring.kafka.influx.avro.SchemaRepository;
+import net.kanstren.kafka.cassanda.CassandaAvroConsumer;
+import net.kanstren.kafka.influx.Config;
+import net.kanstren.kafka.influx.avro.SchemaRepository;
 
 import java.util.Collection;
 

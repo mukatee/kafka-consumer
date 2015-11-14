@@ -1,8 +1,8 @@
-package osmo.monitoring.kafka.influx;
+package net.kanstren.kafka.influx;
 
+import net.kanstren.kafka.influx.telegraf.InFluxTelegrafConsumer;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import osmo.monitoring.kafka.influx.telegraf.InFluxTelegrafConsumer;
 
 import static org.testng.Assert.assertEquals;
 

@@ -1,4 +1,7 @@
-package osmo.monitoring.kafka.influx;
+package net.kanstren.kafka.influx;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Defines used configurations options, as well as configuration file keys.
@@ -6,8 +9,10 @@ package osmo.monitoring.kafka.influx;
  * @author Teemu Kanstren.
  */
 public class Config {
-  /** For defining the Kafka topic to listen to for avro messages. */
+  /** For defining the Kafka topics to listen to for avro messages. */
   public static final String KEY_KAFKA_AVRO_TOPIC = "kafka_avro_topic";
+  /** For defining the Influx database names for the Kafka topics. */
+  public static final String KEY_DB_POSTFIX = "db_postfix";
   /** For defining the Kafka topic to listen to for json messages. */
   public static final String KEY_KAFKA_JSON_TOPIC = "kafka_json_topic";
   /** For defining the Kafka topic to listen to for telegraf messages. */
@@ -20,8 +25,6 @@ public class Config {
   public static final String KEY_KAFKA_CLUSTER = "kafka_cluster";
   /** For defining the number of parallel threads to use in consumer. */
   public static final String KEY_THREAD_COUNT = "thread_count";
-  /** For defining the Influx DB name to connect to. */
-  public static final String KEY_INFLUX_DB_NAME = "influx_db_name";
   /** For defining the Influx DB URL to connect to. */
   public static final String KEY_INFLUX_DB_URL = "influx_db_url";
   /** For defining the user name to connect to the Influx DB server. */
@@ -43,25 +46,32 @@ public class Config {
   public static String kafkaGroup = null;
   /** Kafka cluster name to use. */
   public static String kafkaCluster = null;
-  /** The Kafka topic where we receive avro messages. */
-  public static String kafkaAvroTopic = null;
-  /** The Kafka topic where we receive json messages. */
-  public static String kafkaJsonTopic = null;
-  /** The Kafka topic where we receive telegraf messages. */
-  public static String kafkaTelegrafTopic = null;
+  /** The Kafka topics where we receive avro messages, and their associated database names.
+   * Key = topic name, Value = database name. */
+  public static Map<String, String> kafkaAvroTopics = new HashMap<>();
+  /** The Kafka topics where we receive json messages, and their associated database names.
+   * Key = topic name, Value = database name. */
+  public static Map<String, String> kafkaJsonTopics = new HashMap<>();
+  /** The Kafka topics where we receive telegraf messages, and their associated database names.
+   * Key = topic name, Value = database name. */
+  public static Map<String, String> kafkaTelegrafTopics = new HashMap<>();
   /** Number of parallel threads to use for processing messages. */
   public static Integer threads = null;
-  /** Name of thet Influx DB where to store the measurements. */
-  public static String influxDbName = null;
   /** URL for the InfluxDB server. */
   public static String influxDbUrl = null;
   /** User name for the Influx DB. */
   public static String influxUser = null;
   /** Password for the Influx DB. */
   public static String influxPass = null;
+  /** Postfix value to use for database key property names. */
+  public static String dbPostFix = null;
+  /** URL for Cassandra. */
   public static String cassandraUrl = null;
+  /** Cassandra keyspace name. Like a database name. */
   public static String cassandraKeySpace = null;
+  /** Cassandra configuration options. */
   public static String cassandraReplicationFactor = null;
+  /** Are we expecting to dump data into InfluxDB or Cassandra? */
   public static String consumerType = null;
 
   public static String asString() {
@@ -69,11 +79,10 @@ public class Config {
             "zooUrl='" + zooUrl + '\'' +
             ", kafkaGroup='" + kafkaGroup + '\'' +
             ", kafkaCluster='" + kafkaCluster + '\'' +
-            ", kafkaAvroTopic='" + kafkaAvroTopic + '\'' +
-            ", kafkaJsonTopic='" + kafkaJsonTopic + '\'' +
-            ", kafkaTelegrafTopic='" + kafkaTelegrafTopic + '\'' +
+            ", kafkaAvroTopics='" + kafkaAvroTopics + '\'' +
+            ", kafkaJsonTopics='" + kafkaJsonTopics + '\'' +
+            ", kafkaTelegrafTopics='" + kafkaTelegrafTopics + '\'' +
             ", threads=" + threads +
-            ", influxDbName='" + influxDbName + '\'' +
             ", influxDbUrl='" + influxDbUrl + '\'' +
             ", influxUser='" + influxUser + '\'' +
             ", influxPass='" + influxPass + '\'' +

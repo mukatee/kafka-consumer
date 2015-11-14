@@ -1,4 +1,4 @@
-package osmo.monitoring.kafka.influx.avro;
+package net.kanstren.kafka.influx.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -12,10 +12,16 @@ import java.io.IOException;
 import java.util.*;
 
 /**
+ * An Avro schema repository. Used to find schemas for decoding binary encoded messages.
+ * Works by reading the schema id values and matching schema names from a configuration file called 'schema_id.proeprties'.
+ * These are then mapped to Avro schema definitions that are assumed to be found in the 'schemas' directory.
+ *
  * @author Teemu Kanstren.
  */
 public class SchemaRepository {
+  /** Key = schema id, value = schema itself. */
   private Map<Integer, Schema> schemas = new HashMap<>();
+  /** Key = schema id, value = Avro reader for the schema. */
   private Map<Integer, GenericDatumReader<GenericRecord>> readers = new HashMap<>();
 
   public SchemaRepository() {

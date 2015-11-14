@@ -178,7 +178,7 @@
               -->
               <classpathPrefix>lib/</classpathPrefix>
               <!-- Configures the main class of the application -->
-              <mainClass>osmo.monitoring.kafka.influx.Main</mainClass>
+              <mainClass>net.kanstren.kafka.influx.Main</mainClass>
             </manifest>
             <addMavenDescriptor>false</addMavenDescriptor>
           </archive>

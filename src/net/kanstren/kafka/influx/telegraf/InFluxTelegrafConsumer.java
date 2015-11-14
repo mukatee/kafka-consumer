@@ -1,20 +1,18 @@
-package osmo.monitoring.kafka.influx.telegraf;
+package net.kanstren.kafka.influx.telegraf;
 
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
+import net.kanstren.kafka.influx.InFlux;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.influxdb.InfluxDB;
-import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
-import osmo.monitoring.kafka.influx.Config;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Kafka consumer listening to measurement data in the format of the Telegraf tool (InfluxDB line protocol).
@@ -29,6 +27,8 @@ public class InFluxTelegrafConsumer implements Runnable {
   private final KafkaStream stream;
   /** Identifier for the thread this consumer is running on. */
   private final int id;
+  /** Influx database name. */
+  private final String dbName;
   /** The Influx DB driver instance. */
   private final InfluxDB db;
   /** To create unique thread id values. */
@@ -42,16 +42,15 @@ public class InFluxTelegrafConsumer implements Runnable {
   public InFluxTelegrafConsumer() {
     id = 1;
     db = null;
+    dbName = null;
     stream = null;
   }
 
-  public InFluxTelegrafConsumer(KafkaStream stream) {
+  public InFluxTelegrafConsumer(KafkaStream stream, String dbName) {
     this.stream = stream;
     this.id = nextId++;
-    db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
-    db.enableBatch(2000, 1, TimeUnit.SECONDS);
-//    db.setLogLevel(InfluxDB.LogLevel.HEADERS);
-    db.createDatabase(Config.influxDbName);
+    db = InFlux.influxFor(dbName);
+    this.dbName = dbName;
   }
 
   @Override
@@ -71,10 +70,6 @@ public class InFluxTelegrafConsumer implements Runnable {
     ConsumerIterator<byte[], byte[]> it = stream.iterator();
     while (it.hasNext()) {
       byte[] msg = it.next().message();
-      if (msg.length < 2) {
-        log.info("ignoring short msg, assuming topic polling");
-        continue;
-      }
 //      log.trace("Thread " + id + ":: " + Arrays.toString(msg));
       process(new String(msg, "UTF8"));
     }
@@ -106,14 +101,17 @@ public class InFluxTelegrafConsumer implements Runnable {
    * @return A parsed set of objects for the given measurement line.
    */
   public TelegrafMeasure parse(String line) {
+    //first we replace all whitespace in measurements/tags with "_". That is "\ " becomes "_"
     line = line.replaceAll("\\\\ ", "_");
 //    System.out.println("line:"+line);
+    //splitting with whitespace we get measurement and tags at index 0, fields in index 1 and timestamp in index 2
     String[] split = line.split(" ");
     //TODO: remove this hack when telegraf timestamps are fixed
     long time = System.currentTimeMillis();
 //    long time = Long.parseLong(split[2]);
     String keyValue = split[1];
     String[] kvSplit = keyValue.split("=");
+    //we assume telegraf always sends just one field value in one line
     String fieldName = kvSplit[0];
     String fieldValue = kvSplit[1];
     String measureAndTags = split[0];
@@ -126,6 +124,13 @@ public class InFluxTelegrafConsumer implements Runnable {
     return new TelegrafMeasure(measure, time, fieldName, fieldValue, tags);
   }
 
+  /**
+   * Parse the actual measurement value(s) as well as tags from the InfluxDB lineprotocol.
+   *
+   * @param measureAndTags The line to parse.
+   * @param tags This is where parsed tags are stored. Key = tag name, value = tag value.
+   * @return The measurement name.
+   */
   public String parseMeasureAndTags(String measureAndTags, Map<String, String> tags) {
     String[] split = measureAndTags.split(",");
     for (int i = 1 ; i < split.length ; i++) {
@@ -137,6 +142,11 @@ public class InFluxTelegrafConsumer implements Runnable {
     return split[0];
   }
 
+  /**
+   * Procses a Telegraf message received over Kafka.
+   *
+   * @param msg The msg to process.
+   */
   public void process(String msg) {
     TelegrafMeasure measure = parse(msg);
     Point.Builder builder = Point.measurement(measure.name);
@@ -146,13 +156,18 @@ public class InFluxTelegrafConsumer implements Runnable {
     setValue(builder, measure);
     Point point = builder.build();
 //    log.trace("Writing to InFlux:"+point);
-    db.write(Config.influxDbName, "default", point);
+    db.write(dbName, "default", point);
     count++;
     if (count % 100 == 0) System.out.print(count + ",");
     if (count % 1000 == 0) System.out.println();
   }
 
-  //80.220.165.6
+  /**
+   * Set value with correct type for InfluxDB based on given Telegraf measure.
+   *
+   * @param builder The InfluxDB interface.
+   * @param measure The measure to store.
+   */
   private void setValue(Point.Builder builder, TelegrafMeasure measure) {
     String value = measure.fieldValue;
     String name = measure.fieldName;
@@ -177,11 +192,20 @@ public class InFluxTelegrafConsumer implements Runnable {
     builder.field(name, b);
   }
 
+  /**
+   * A class encapsulating measurement data provided by Telegraf.
+   * Assumes that Telegraf provides all measures with a single field.
+   */
   public static final class TelegrafMeasure {
+    /** Name of the measurement, e.g. CPU load. */
     public final String name;
+    /** Measurement time. When was this recorded? */
     public final long time;
+    /** Field name for the measurement data. */
     public final String fieldName;
+    /** Value of the field. */
     public final String fieldValue;
+    /** Metadata tags for the measurements. Key = tag name, value = tag value. E.g., "tom"="host1". */
     public final Map<String, String> tags;
 
     public TelegrafMeasure(String name, long time, String fieldName, String fieldValue, Map<String, String> tags) {

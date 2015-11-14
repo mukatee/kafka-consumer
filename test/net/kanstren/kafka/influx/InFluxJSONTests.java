@@ -1,6 +1,6 @@
-package osmo.monitoring.kafka.influx;
+package net.kanstren.kafka.influx;
 
-import osmo.monitoring.kafka.influx.json.InFluxJSONConsumer;
+import net.kanstren.kafka.influx.json.InFluxJSONConsumer;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Query;
@@ -21,16 +21,17 @@ import static org.testng.Assert.assertEquals;
 public class InFluxJSONTests {
   private InFluxJSONConsumer influx = null;
   private InfluxDB db = null;
+  private String dbName = null;
 
   @BeforeMethod
   public void setup() {
-    Config.influxDbName = "unit_test_db";
+    dbName = "unit_test_db";
     Config.influxUser = "my_test_user";
     Config.influxPass = "my_test_pw";
     Config.influxDbUrl = "http://192.168.2.153:8086";
     db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
-    db.deleteDatabase(Config.influxDbName);
-    influx = new InFluxJSONConsumer(null);
+    db.deleteDatabase(dbName);
+    influx = new InFluxJSONConsumer(null, null);
   }
 
   @AfterMethod
@@ -42,7 +43,7 @@ public class InFluxJSONTests {
   public void errorMsg() {
     String msg = TestUtils.getResource(InFluxJSONTests.class, "test_msg_error.json");
     influx.process(msg);
-    QueryResult result = db.query(new Query("select * from test_oid3", Config.influxDbName));
+    QueryResult result = db.query(new Query("select * from test_oid3", dbName));
     checkGenerals(result, 1, "1.1.1.2.1", "127.0.0.1:155", "test target 3", "error", "test_oid3");
   }
 
@@ -72,7 +73,7 @@ public class InFluxJSONTests {
   public void floatMeasure() {
     String msg = TestUtils.getResource(InFluxJSONTests.class, "test_msg_cpu_float.json");
     influx.process(msg);
-    QueryResult result = db.query(new Query("select * from cpu_load", Config.influxDbName));
+    QueryResult result = db.query(new Query("select * from cpu_load", dbName));
     checkGenerals(result, 1, "1.1.1.2.1", "127.0.0.1:155", "server01", "value", "cpu_load");
   }
 
@@ -82,7 +83,7 @@ public class InFluxJSONTests {
     influx.process(msg);
     msg = TestUtils.getResource(InFluxJSONTests.class, "test_msg_cpu_int.json");
     influx.process(msg);
-    QueryResult result = db.query(new Query("select * from cpu_load", Config.influxDbName));
+    QueryResult result = db.query(new Query("select * from cpu_load", dbName));
     checkGenerals(result, 2, "1.1.1.2.1", "127.0.0.1:155", "server01", "value", "cpu_load");
   }
 }

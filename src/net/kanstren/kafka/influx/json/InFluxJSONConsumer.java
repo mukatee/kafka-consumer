@@ -1,22 +1,22 @@
-package osmo.monitoring.kafka.influx.json;
+package net.kanstren.kafka.influx.json;
 
 import com.eclipsesource.json.JsonObject;
 import com.eclipsesource.json.JsonValue;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
-import osmo.monitoring.kafka.influx.Config;
+import net.kanstren.kafka.influx.Config;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
-import osmo.monitoring.kafka.influx.Config;
 
 import java.util.concurrent.TimeUnit;
 
 /**
- * Kafka consumer listening to measurement data.
+ * Kafka consumer listening to measurement data in JSON format.
+ * TODO: this has not been updated for a while, so probably requires some fixing..
  * Reads the Kafka topic stream and stores received data to the configured InfluxDB instance.
  * <p>
  * Expected data format is messages with a JSON data structure.
@@ -60,17 +60,20 @@ public class InFluxJSONConsumer implements Runnable {
   private final KafkaStream stream;
   /** Identifier for the thread this consumer is running on. */
   private final int id;
+  /** Influx database name. */
+  private final String dbName;
   /** The Influx DB driver instance. */
   private final InfluxDB db;
   /** To create unique thread id values. */
   private static int nextId = 1;
   private static final Logger log = LogManager.getLogger();
 
-  public InFluxJSONConsumer(KafkaStream stream) {
+  public InFluxJSONConsumer(KafkaStream stream, String dbName) {
     this.stream = stream;
     this.id = nextId++;
     db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
-    db.createDatabase(Config.influxDbName);
+    db.createDatabase(dbName);
+    this.dbName = dbName;
   }
 
   @Override
@@ -114,7 +117,7 @@ public class InFluxJSONConsumer implements Runnable {
     JsonObject body = json.get("body").asObject();
 
     BatchPoints batchPoints = BatchPoints
-            .database(Config.influxDbName)
+            .database(dbName)
             .tag("async", "true")
             .retentionPolicy("default")
             .consistency(InfluxDB.ConsistencyLevel.ALL)

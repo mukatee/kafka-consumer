@@ -1,5 +1,7 @@
-package osmo.monitoring.kafka.influx;
+package net.kanstren.kafka.influx;
 
+import net.kanstren.kafka.influx.avro.InFluxAvroConsumer;
+import net.kanstren.kafka.influx.avro.SchemaRepository;
 import org.apache.avro.Schema;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.EncoderFactory;
@@ -11,16 +13,12 @@ import org.influxdb.dto.QueryResult;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import osmo.common.TestUtils;
-import osmo.monitoring.kafka.influx.avro.InFluxAvroConsumer;
-import osmo.monitoring.kafka.influx.avro.SchemaRepository;
 import pypro.snmp.SNMPFloat;
 import pypro.snmp.SNMPFloatBody;
 import pypro.snmp.SNMPFloatHeader;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -32,16 +30,17 @@ import static org.testng.Assert.assertEquals;
 public class InFluxAvroTests {
   private InFluxAvroConsumer influx = null;
   private InfluxDB db = null;
+  private String dbName = null;
 
   @BeforeMethod
   public void setup() {
-    Config.influxDbName = "unit_test_db";
+    dbName = "unit_test_db";
     Config.influxUser = "my_test_user";
     Config.influxPass = "my_test_pw";
     Config.influxDbUrl = "http://192.168.2.153:8086";
     db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
-    db.deleteDatabase(Config.influxDbName);
-    influx = new InFluxAvroConsumer(new SchemaRepository(), null);
+    db.deleteDatabase(dbName);
+    influx = new InFluxAvroConsumer(new SchemaRepository(), null, null);
   }
 
   @AfterMethod
@@ -57,7 +56,7 @@ public class InFluxAvroTests {
   public void floatMeasure() throws Exception {
     processFloat(1.1, "127.0.0.1", "email server", "1.1.1.2.1", 11111L, "cpu load");
 
-    QueryResult result = db.query(new Query("select * from cpu_load", Config.influxDbName));
+    QueryResult result = db.query(new Query("select * from cpu_load", dbName));
     assertMeasure(result, 0, 0, 1, 1, "1.1.1.2.1", "127.0.0.1", "email server", "value", "cpu_load", 1.1);
   }
 
@@ -66,7 +65,7 @@ public class InFluxAvroTests {
     processFloat(1.1, "127.0.0.1", "email server", "1.1.1.2.1", 11111L, "cpu load");
     processFloat(1.2, "127.0.0.2", "email server", "1.1.1.2.1", 11111L, "cpu load");
 
-    QueryResult result = db.query(new Query("select * from cpu_load", Config.influxDbName));
+    QueryResult result = db.query(new Query("select * from cpu_load", dbName));
     assertMeasure(result, 0, 0, 1, 2, "1.1.1.2.1", "127.0.0.1", "email server", "value", "cpu_load", 1.1);
     assertMeasure(result, 1, 0, 1, 2, "1.1.1.2.1", "127.0.0.2", "email server", "value", "cpu_load", 1.2);
   }
