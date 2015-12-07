@@ -20,7 +20,7 @@ public class InFluxTelegrafTests {
 
   @Test
   public void lineParsing() {
-    InFluxTelegrafConsumer.TelegrafMeasure measure = consumer.parse("net_drop_out,best=teemu,tom=teemun\\ kone,interface=en0 value=0i 1434055562000000000");
+    InFluxTelegrafConsumer.TelegrafMeasure measure = consumer.parse("net_drop_out,best=teemu,host=teemun\\ kone,interface=en0 value=0i 1434055562000000000");
     assertEquals(measure.name, "net_drop_out", "Parsed measurement name");
     assertEquals(measure.fieldName, "value", "Parsed measurement field name");
     assertEquals(measure.fieldValue, "0i", "Parsed measurement field value");

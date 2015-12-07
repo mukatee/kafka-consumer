@@ -63,6 +63,8 @@ public class Config {
   public static String influxUser = null;
   /** Password for the Influx DB. */
   public static String influxPass = null;
+  /** If true, use batch mode to store points. Useful in production, less useful in testing. */
+  public static boolean influxBatch = true;
   /** Postfix value to use for database key property names. */
   public static String dbPostFix = null;
   /** URL for Cassandra. */

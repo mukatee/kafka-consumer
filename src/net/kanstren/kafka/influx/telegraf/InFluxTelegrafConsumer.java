@@ -106,9 +106,7 @@ public class InFluxTelegrafConsumer implements Runnable {
 //    System.out.println("line:"+line);
     //splitting with whitespace we get measurement and tags at index 0, fields in index 1 and timestamp in index 2
     String[] split = line.split(" ");
-    //TODO: remove this hack when telegraf timestamps are fixed
-    long time = System.currentTimeMillis();
-//    long time = Long.parseLong(split[2]);
+    long time = Long.parseLong(split[2]);
     String keyValue = split[1];
     String[] kvSplit = keyValue.split("=");
     //we assume telegraf always sends just one field value in one line

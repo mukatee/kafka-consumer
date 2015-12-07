@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS test_ks.SNMPFloat (
+CREATE TABLE IF NOT EXISTS test_ks.snmpfloat (
 time timestamp,
 type text,
 tom text,

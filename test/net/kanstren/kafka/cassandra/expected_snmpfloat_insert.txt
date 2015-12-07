@@ -1,1 +1,1 @@
-INSERT INTO test_ks.SNMPFloat (time, type, tom, address, oid, value) VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO test_ks.snmpfloat (time, type, tom, address, oid, value) VALUES (?, ?, ?, ?, ?, ?);

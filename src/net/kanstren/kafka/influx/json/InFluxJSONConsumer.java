@@ -5,6 +5,7 @@ import com.eclipsesource.json.JsonValue;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
 import net.kanstren.kafka.influx.Config;
+import net.kanstren.kafka.influx.InFlux;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.influxdb.InfluxDB;
@@ -71,8 +72,7 @@ public class InFluxJSONConsumer implements Runnable {
   public InFluxJSONConsumer(KafkaStream stream, String dbName) {
     this.stream = stream;
     this.id = nextId++;
-    db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
-    db.createDatabase(dbName);
+    db = InFlux.influxFor(dbName);
     this.dbName = dbName;
   }
 
@@ -111,28 +111,17 @@ public class InFluxJSONConsumer implements Runnable {
     String type = header.get("type").asString();
     header.remove("type");
     type = type.replace(' ', '_');
-    String dbName = header.get("db").asString();
-    header.remove("db");
 
     JsonObject body = json.get("body").asObject();
 
-    BatchPoints batchPoints = BatchPoints
-            .database(dbName)
-            .tag("async", "true")
-            .retentionPolicy("default")
-            .consistency(InfluxDB.ConsistencyLevel.ALL)
-            .build();
-
     if (type.equals("multipoint")) {
-      multiPoint(batchPoints, time, header, body);
+      multiPoint(time, header, body);
     } else {
-      singlePoint(batchPoints, type, time, header, body);
+      singlePoint(type, time, header, body);
     }
-
-    db.write(batchPoints);
   }
 
-  private void multiPoint(BatchPoints batch, long time, JsonObject header, JsonObject body) {
+  private void multiPoint(long time, JsonObject header, JsonObject body) {
     for (JsonObject.Member member : body) {
       String name = member.getName();
       Point.Builder builder = Point.measurement(name);
@@ -140,18 +129,18 @@ public class InFluxJSONConsumer implements Runnable {
       setTags(header, builder);
       setField("value", builder, member.getValue());
       Point point = builder.build();
-      batch.point(point);
+      db.write(dbName, "default", point);
     }
   }
 
-  private void singlePoint(BatchPoints batch, String type, long time, JsonObject header, JsonObject body) {
+  private void singlePoint(String type, long time, JsonObject header, JsonObject body) {
     Point.Builder builder = Point.measurement(type);
     builder.time(time, TimeUnit.MILLISECONDS);
     setTags(header, builder);
     createFields(body, builder);
     Point point = builder.build();
     System.out.println("writing point:" + point);
-    batch.point(point);
+    db.write(dbName, "default", point);
   }
 
   private void setTags(JsonObject header, Point.Builder builder) {

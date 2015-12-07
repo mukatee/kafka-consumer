@@ -26,7 +26,7 @@ public class InFlux {
     InfluxDB db = influxes.get(dbName);
     if (db != null) return db;
     db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
-    db.enableBatch(2000, 1, TimeUnit.SECONDS);
+    if (Config.influxBatch) db.enableBatch(2000, 1, TimeUnit.SECONDS);
 //    db.setLogLevel(InfluxDB.LogLevel.HEADERS);
     db.createDatabase(dbName);
     influxes.put(dbName, db);

@@ -20,12 +20,11 @@ public class PropertiesReadTests {
     props.load(new StringReader(TestUtils.getResource(PropertiesReadTests.class, "test.properties")));
     //this throws an error if the properties are not properly initialized
     Main.init(props);
-    assertEquals(Config.kafkaAvroTopics.size(), 4, "Number of parsed Avro topics and db's");
+    assertEquals(Config.kafkaAvroTopics.size(), 3, "Number of parsed Avro topics and db's");
     assertEquals(Config.kafkaJsonTopics.size(), 1, "Number of parsed JSON topics and db's");
     assertEquals(Config.kafkaTelegrafTopics.size(), 1, "Number of parsed Telegraf topics and db's");
     assertEquals(Config.kafkaAvroTopics.get("router_avro"), "router", "Parsed Avro topic");
     assertEquals(Config.kafkaAvroTopics.get("tester_avro"), "tester", "Parsed Avro topic");
-    assertEquals(Config.kafkaAvroTopics.get("qosmet_avro"), "qosmet", "Parsed Avro topic");
     assertEquals(Config.kafkaAvroTopics.get("browser_avro"), "browser", "Parsed Avro topic");
     assertEquals(Config.kafkaJsonTopics.get("router_json"), "router", "Parsed JSON topic");
     assertEquals(Config.kafkaTelegrafTopics.get("telegraf"), "telegraf", "Parsed Telegraf topic");

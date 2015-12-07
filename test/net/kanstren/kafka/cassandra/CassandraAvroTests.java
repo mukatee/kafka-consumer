@@ -44,24 +44,6 @@ public class CassandraAvroTests {
   }
 
   @Test
-  public void schemaAvgToTable() {
-    Config.cassandraKeySpace = "test_ks";
-    SchemaRepository repo = new SchemaRepository();
-    Collection<Schema> schemas = repo.getSchemas();
-    Schema snmpFloat = null;
-    for (Schema schema : schemas) {
-      String name = schema.getName();
-      if (name.equals("Averages")) {
-        snmpFloat = schema;
-        break;
-      }
-    }
-    String table = CassandaAvroConsumer.tableFor(snmpFloat);
-    String expected = TestUtils.getResource(CassandraAvroTests.class, "expected_avg_table.txt");
-    assertEquals(table, expected, "Generated table for Averages schema");
-  }
-
-  @Test
   public void insertForSNMPFloat() {
     Config.cassandraKeySpace = "test_ks";
     SchemaRepository repo = new SchemaRepository();
@@ -79,21 +61,4 @@ public class CassandraAvroTests {
     assertEquals(table, expected, "Generated insert for SNMPFloat schema");
   }
 
-  @Test
-  public void insertForAverage() {
-    Config.cassandraKeySpace = "test_ks";
-    SchemaRepository repo = new SchemaRepository();
-    Collection<Schema> schemas = repo.getSchemas();
-    Schema snmpFloat = null;
-    for (Schema schema : schemas) {
-      String name = schema.getName();
-      if (name.equals("Averages")) {
-        snmpFloat = schema;
-        break;
-      }
-    }
-    String table = CassandaAvroConsumer.insertFor(snmpFloat);
-    String expected = TestUtils.getResource(CassandraAvroTests.class, "expected_avg_insert.txt");
-    assertEquals(table, expected, "Generated insert for Averages schema");
-  }
 }

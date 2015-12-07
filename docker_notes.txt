@@ -1,0 +1,14 @@
+to install grafana:
+docker run -d --name=grafana -p 3000:3000 -v /home/caveman/grafana-docker/data:/var/lib/grafana grafana/grafana
+
+to install influxdb:
+docker run -d --name=influx --volume=/home/caveman/influx-docker/data:/data -p 8083:8083 -p 8086:8086 --expose 8090 --expose 8099 tutum/influxdb
+
+to remove all exited docker containers:
+docker rm $(docker ps -q -f status=exited)
+
+to update docker image:
+docker stop influx
+docker pull tutum/influxdb
+docker run -d --name=influx --volume=/home/caveman/influx-docker/data:/data -p 8083:8083 -p 8086:8086 --expose 8090 --expose 8099 tutum/influxdb
+

@@ -1,6 +1,5 @@
 {
   "header": {
-    "db": "session1",
     "type": "cpu load",
     "tom": "server01",
     "target": "127.0.0.1:155",
@@ -8,6 +7,6 @@
     "time": 0
   },
   "body": {
-    "value": "2.0"
+    "data_value": "2.0"
   }
 }

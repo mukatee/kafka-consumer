@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS test_ks.SNMPFloat (
+CREATE TABLE IF NOT EXISTS test_ks.snmpfloat (
 time timestamp,
 type text,
 tom text,
@@ -8,7 +8,7 @@ value double,
 PRIMARY KEY (time, type)
 );
 
-CREATE TABLE IF NOT EXISTS test_ks.SNMPInt (
+CREATE TABLE IF NOT EXISTS test_ks.snmpint (
 time timestamp,
 type text,
 tom text,
@@ -18,7 +18,7 @@ value bigint,
 PRIMARY KEY (time, type)
 );
 
-CREATE TABLE IF NOT EXISTS test_ks.SNMPStrMeasure (
+CREATE TABLE IF NOT EXISTS test_ks.snmpstrmeasure (
 time timestamp,
 type text,
 tom text,
@@ -27,105 +27,3 @@ oid text,
 value text,
 PRIMARY KEY (time, type)
 );
-
-CREATE TABLE IF NOT EXISTS test_ks.Averages (
-time timestamp,
-type text,
-tom text,
-relative_time float,
-ctrl_pkt_num int,
-true_avg_period float,
-dropped_packets_nic int,
-dropped_packets_pcap int,
-latitude float,
-longitude float,
-altitude float,
-ul_avg_packet_loss float,
-ul_total_packet_loss float,
-ul_avg_load_kbs float,
-ul_avg_load_packets int,
-ul_total_packets int,
-ul_avg_packet_size_b int,
-ul_samples int,
-ul_avg_delay float,
-ul_moving_avg_jitter float,
-ul_absolute_jitter float,
-ul_gqosm int,
-ul_psqa int,
-ul_avg_connection_break_time float,
-ul_avg_connection_break_packets float,
-ul_avg_connection_break_count float,
-ul_max_connection_break_time float,
-ul_duplicates int,
-ul_sent_nf int,
-ul_protocol int,
-dl_avg_packet_loss float,
-dl_total_packet_loss float,
-dl_avg_load_kbs float,
-dl_avg_load_packets int,
-dl_total_packets int,
-dl_avg_packet_size_b int,
-dl_samples int,
-dl_avg_delay float,
-dl_moving_avg_jitter float,
-dl_absolute_jitter float,
-dl_gqosm int,
-dl_psqa int,
-dl_avg_connection_break_time float,
-dl_avg_connection_break_packets float,
-dl_avg_connection_break_count float,
-dl_max_connection_break_time float,
-dl_duplicates int,
-dl_sent_nf int,
-dl_protocol int,
-PRIMARY KEY (time, type)
-);
-
-CREATE TABLE IF NOT EXISTS test_ks.AbsolutesUL (
-time timestamp,
-type text,
-tom text,
-source_ip text,
-source_port int,
-destination_ip text,
-destination_port int,
-id bigint,
-fragment_offset int,
-packet_size int,
-delay int,
-jitter_absolute int,
-jitter_moving_avg int,
-ctrl_packet_num int,
-lost_status int,
-PRIMARY KEY (time, type)
-);
-
-CREATE TABLE IF NOT EXISTS test_ks.AbsolutesDL (
-time timestamp,
-type text,
-tom text,
-source_ip text,
-source_port int,
-destination_ip text,
-destination_port int,
-id bigint,
-fragment_offset int,
-packet_size int,
-delay int,
-jitter_absolute int,
-jitter_moving_avg int,
-ctrl_packet_num int,
-lost_status int,
-PRIMARY KEY (time, type)
-);
-
-CREATE TABLE IF NOT EXISTS test_ks.DDEStat (
-time timestamp,
-type text,
-tom text,
-address text,
-value float,
-PRIMARY KEY (time, type)
-);
-
-

@@ -1,5 +1,6 @@
 package net.kanstren.kafka.influx;
 
+import net.kanstren.kafka.TestData;
 import net.kanstren.kafka.influx.avro.InFluxAvroConsumer;
 import net.kanstren.kafka.influx.avro.SchemaRepository;
 import org.apache.avro.Schema;
@@ -11,6 +12,7 @@ import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import pypro.snmp.SNMPFloat;
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 
 /**
  * @author Teemu Kanstren.
@@ -32,30 +35,34 @@ public class InFluxAvroTests {
   private InfluxDB db = null;
   private String dbName = null;
 
-  @BeforeMethod
-  public void setup() {
-    dbName = "unit_test_db";
+  @BeforeClass
+  public void fixtureSetup() throws Exception {
+    Main.init();
     Config.influxUser = "my_test_user";
     Config.influxPass = "my_test_pw";
-    Config.influxDbUrl = "http://192.168.2.153:8086";
+    Config.influxBatch = false;
+  }
+
+  @BeforeMethod
+  public void setup() throws Exception {
+    TestData.index++;
+    dbName = "unit_test_db_"+TestData.index;
+//    Config.influxDbUrl = "http://192.168.2.153:8086";
     db = InfluxDBFactory.connect(Config.influxDbUrl, Config.influxUser, Config.influxPass);
-    db.deleteDatabase(dbName);
-    influx = new InFluxAvroConsumer(new SchemaRepository(), null, null);
+//    db.deleteDatabase(dbName);
+    influx = new InFluxAvroConsumer(new SchemaRepository(), null, dbName);
   }
 
   @AfterMethod
-  public void cleanup() {
-
-  }
-
-  @Test
-  public void errorMsg() {
+  public void drop() {
+    db.deleteDatabase(dbName);
   }
 
   @Test
   public void floatMeasure() throws Exception {
     processFloat(1.1, "127.0.0.1", "email server", "1.1.1.2.1", 11111L, "cpu load");
 
+    Thread.sleep(2000);
     QueryResult result = db.query(new Query("select * from cpu_load", dbName));
     assertMeasure(result, 0, 0, 1, 1, "1.1.1.2.1", "127.0.0.1", "email server", "value", "cpu_load", 1.1);
   }
@@ -66,8 +73,8 @@ public class InFluxAvroTests {
     processFloat(1.2, "127.0.0.2", "email server", "1.1.1.2.1", 11111L, "cpu load");
 
     QueryResult result = db.query(new Query("select * from cpu_load", dbName));
-    assertMeasure(result, 0, 0, 1, 2, "1.1.1.2.1", "127.0.0.1", "email server", "value", "cpu_load", 1.1);
-    assertMeasure(result, 1, 0, 1, 2, "1.1.1.2.1", "127.0.0.2", "email server", "value", "cpu_load", 1.2);
+    assertMeasure(result, 0, 0, 2, 1, "1.1.1.2.1", "127.0.0.1", "email server", "value", "cpu_load", 1.1);
+    assertMeasure(result, 0, 1, 2, 1, "1.1.1.2.1", "127.0.0.2", "email server", "value", "cpu_load", 1.2);
   }
 
   private void assertMeasure(QueryResult result, int serieIndex, int measureIndex, int valueCount, int serieCount, String oid, String address,
@@ -76,22 +83,26 @@ public class InFluxAvroTests {
     assertEquals(items.size(), 1, "Number of results");
     QueryResult.Result item1 = items.get(0);
     List<QueryResult.Series> series = item1.getSeries();
+    assertNotNull(series, "Series should not be null in "+item1);
     assertEquals(series.size(), serieCount, "Number of series");
     QueryResult.Series series1 = series.get(serieIndex);
-    List<List<Object>> values = series1.getValues();
-    assertEquals(values.size(), valueCount, "Number of values");
-    Map<String, String> tags = series1.getTags();
-    assertEquals(tags.size(), 4, "Number of tags created");
-    assertEquals(tags.get("oid"), oid);
-    assertEquals(tags.get("address"), address);
-    assertEquals(tags.get("tom"), tom);
+    List<List<Object>> valuesList = series1.getValues();
+    assertEquals(valuesList.size(), valueCount, "Number of values");
+//    Map<String, String> tags = series1.getTags();
+//    assertEquals(tags.size(), 4, "Number of tags created");
+//    assertEquals(tags.get("oid"), oid);
+//    assertEquals(tags.get("address"), address);
+//    assertEquals(tags.get("tom"), tom);
     //fourth tag is influxdb internal
     List<String> columns = series1.getColumns();
-    assertEquals(columns.toString(), "[time, "+type+"]", "Columns created");
-    List<Object> measures = values.get(measureIndex);
-    assertEquals(measures.size(), 2, "Number of measures"); //this is "time" and "value"
+    assertEquals(columns.toString(), "[time, address, oid, tom, "+type+"]", "Columns created");
+    List<Object> measures = valuesList.get(measureIndex);
+    assertEquals(measures.size(), 5, "Number of measures"); //this is "time", "value", oid, address, tom
     Object value = measures.get(columns.indexOf(type));
     assertEquals(value, expectedValue, "Value for measure "+measureIndex+" in series "+serieIndex);
+    assertEquals(measures.get(columns.indexOf("oid")), oid);
+    assertEquals(measures.get(columns.indexOf("address")), address);
+    assertEquals(measures.get(columns.indexOf("tom")), tom);
     String name = series1.getName();
     assertEquals(name, expectedName);
   }
